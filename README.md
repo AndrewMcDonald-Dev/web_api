@@ -52,9 +52,9 @@ $ TBD
 -   API
     -   Add error handling to API
         -   Build central error handling that all endpoints resolve to
-        -   Send User back useful error data
+        -   ~~Send User back useful error data
     -   Code split with an effective file structure
-    -   Multi-Thread the API with a thread pool
+    -   ~~Multi-Thread the API with a thread pool
     -   Fill out CRUD operations on all tables
 -   Web
     -   Figure out what gonna do for frontend

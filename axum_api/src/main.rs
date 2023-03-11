@@ -11,7 +11,8 @@ use std::sync::Arc;
 use tokio_postgres::row::Row;
 use uuid::Uuid;
 
-#[tokio::main]
+// #[tokio::main(worker_threads=10)]
+#[tokio::main(worker_threads = 1)]
 async fn main() {
     dotenv().ok();
     let app_state = AppState::create().await;
@@ -65,7 +66,11 @@ impl AppState {
 }
 
 async fn get_all(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    let client = state.pool.get().await.unwrap();
+    let client = state
+        .pool
+        .get()
+        .await
+        .expect("Could not obtain pooled connection.");
     let rows = client
         .query("SELECT id, first_name, last_name FROM person", &[])
         .await
@@ -78,7 +83,11 @@ async fn get_all(State(state): State<Arc<AppState>>) -> impl IntoResponse {
 }
 
 async fn get_by_id(Path(id): Path<Uuid>, State(state): State<Arc<AppState>>) -> Response {
-    let client = state.pool.get().await.unwrap();
+    let client = state
+        .pool
+        .get()
+        .await
+        .expect("Could not obtain pooled connection.");
     let rows = client
         .query(
             "SELECT id, first_name, last_name FROM person WHERE id=$1",
@@ -105,7 +114,11 @@ async fn post_person(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<CreatePerson>,
 ) -> Response {
-    let client = state.pool.get().await.unwrap();
+    let client = state
+        .pool
+        .get()
+        .await
+        .expect("Could not obtain pooled connection.");
 
     let new_person = Person {
         id: Uuid::new_v4(),
@@ -113,18 +126,20 @@ async fn post_person(
         last_name: payload.last_name,
     };
 
-    let _resp = client
+    match client
         .query(
-            &format!(
-                "INSERT INTO person (id, first_name, last_name) VALUES ('{}', '{}', '{}');",
-                new_person.id, new_person.first_name, new_person.last_name
-            ),
-            &[],
+            "INSERT INTO person (id, first_name, last_name) VALUES ($1, $2, $3);",
+            &[
+                &new_person.id.to_string(),
+                &new_person.first_name,
+                &new_person.last_name,
+            ],
         )
         .await
-        .unwrap();
-
-    (StatusCode::OK, Json(new_person)).into_response()
+    {
+        Ok(_) => (StatusCode::OK, Json(new_person)).into_response(),
+        Err(err) => (StatusCode::NOT_ACCEPTABLE, err.to_string()).into_response(),
+    }
 }
 
 #[derive(Serialize)]
@@ -136,7 +151,7 @@ struct Person {
 
 impl From<&Row> for Person {
     fn from(row: &Row) -> Self {
-        let id: Uuid = row.get("id");
+        let id: Uuid = Uuid::try_parse(row.get("id")).expect("Bad id received.");
         let first_name: String = row.get("first_name");
         let last_name: String = row.get("last_name");
         Person {
