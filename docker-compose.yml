@@ -15,18 +15,13 @@ services:
             context: ./db
 
     rust_api:
+        image: docker.io/library/rust:latest
         container_name: rust_api
         build:
             context: ./axum_api
             dockerfile: Dockerfile
         ports:
-            - '8080:8080'
-        environment:
-            - POSTGRES_HOST=postgres
-            - POSTGRES_PORT=5432
-            - POSTGRES_USER=postgres
-            - POSTGRES_PASSWORD=1Qwertytrewq
-            - POSTGRES_DBNAME=app
+            - '3000:3000'
         depends_on:
             - db
 

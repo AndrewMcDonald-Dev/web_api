@@ -5,6 +5,7 @@ use axum::routing::get;
 use axum::{Json, Router};
 use config::{Config, ConfigError, Environment};
 use deadpool_postgres::{Config as DPConfig, Pool};
+use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio_postgres::row::Row;
@@ -12,11 +13,14 @@ use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
     let app_state = AppState::create().await;
     let app = Router::new()
+        .route("/", get(|| async { "Hello World" }))
         .route("/persons", get(get_all).post(post_person))
         .route("/persons/:id", get(get_by_id))
         .with_state(Arc::clone(&app_state));
+    println!("Ready and listening on http://localhost:3000");
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
         .serve(app.into_make_service())
         .await
@@ -109,10 +113,10 @@ async fn post_person(
         last_name: payload.last_name,
     };
 
-    let resp = client
+    let _resp = client
         .query(
             &format!(
-                "INSERT INTO person (id, first_name, last_name) VALUES ({}, {}, {})",
+                "INSERT INTO person (id, first_name, last_name) VALUES ('{}', '{}', '{}');",
                 new_person.id, new_person.first_name, new_person.last_name
             ),
             &[],
@@ -120,10 +124,7 @@ async fn post_person(
         .await
         .unwrap();
 
-    match resp.first() {
-        Some(_) => StatusCode::OK.into_response(),
-        _ => StatusCode::NOT_ACCEPTABLE.into_response(),
-    }
+    (StatusCode::OK, Json(new_person)).into_response()
 }
 
 #[derive(Serialize)]
