@@ -1,0 +1,34 @@
+version: '3'
+services:
+    db:
+        image: docker.io/library/postgres:latest
+        restart: always
+        ports:
+            - '5432:5432'
+        volumes:
+            - db_data:/var/lib/postgresql/db_data
+        environment:
+            - POSTGRES_USER=postgres
+            - POSTGRES_PASSWORD=1Qwertytrewq
+            - POSTGRES_DBNAME=app
+        build:
+            context: ./db
+
+    rust_api:
+        container_name: rust_api
+        build:
+            context: ./axum_api
+            dockerfile: Dockerfile
+        ports:
+            - '8080:8080'
+        environment:
+            - POSTGRES_HOST=postgres
+            - POSTGRES_PORT=5432
+            - POSTGRES_USER=postgres
+            - POSTGRES_PASSWORD=1Qwertytrewq
+            - POSTGRES_DBNAME=app
+        depends_on:
+            - db
+
+volumes:
+    db_data: {}
